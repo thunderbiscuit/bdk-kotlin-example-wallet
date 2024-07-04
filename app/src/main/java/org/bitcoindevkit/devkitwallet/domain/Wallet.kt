@@ -113,7 +113,7 @@ class Wallet private constructor(
 
     fun broadcast(signedPsbt: Psbt): String {
         currentBlockchainClient?.broadcast(signedPsbt.extractTx()) ?: throw IllegalStateException("Blockchain client not initialized")
-        return signedPsbt.extractTx().txid()
+        return signedPsbt.extractTx().computeTxid()
     }
 
     private fun getAllTransactions(): List<CanonicalTx>  = wallet.transactions()
@@ -121,13 +121,13 @@ class Wallet private constructor(
     fun getAllTxDetails(): List<TxDetails> {
         val transactions = getAllTransactions()
         return transactions.map { tx ->
-            val txid = tx.transaction.txid()
+            val txid = tx.transaction.computeTxid()
             val (sent, received) = wallet.sentAndReceived(tx.transaction)
             var feeRate: FeeRate? = null
             var fee: ULong? = null
             // TODO: I don't know why we're getting negative fees here, but it looks like a bug
             try {
-                fee = wallet.calculateFee(tx.transaction)
+                fee = wallet.calculateFee(tx.transaction).toSat()
             } catch (e: Exception) {
                 Log.e(TAG, "Error calculating fee rate for tx $txid: $e")
             }
@@ -162,7 +162,7 @@ class Wallet private constructor(
         wallet.applyUpdate(update)
     }
 
-    fun getBalance(): ULong = wallet.getBalance().total.toSat()
+    fun getBalance(): ULong = wallet.balance().total.toSat()
 
     fun getNewAddress(): AddressInfo = wallet.revealNextAddress(KeychainKind.EXTERNAL)
 
@@ -209,9 +209,9 @@ class Wallet private constructor(
                 .setName(newWalletConfig.name)
                 .setNetwork(newWalletConfig.network.intoProto())
                 .setScriptType(ActiveWalletScriptType.P2WPKH)
-                .setDescriptor(descriptor.asStringPrivate())
-                .setChangeDescriptor(changeDescriptor.asStringPrivate())
-                .setRecoveryPhrase(mnemonic.asString())
+                .setDescriptor(descriptor.toStringWithSecret())
+                .setChangeDescriptor(changeDescriptor.toStringWithSecret())
+                .setRecoveryPhrase(mnemonic.toString())
                 .build()
 
             // TODO: launch this correctly, not on the main thread
@@ -221,13 +221,13 @@ class Wallet private constructor(
             val bdkWallet = BdkWallet(
                 descriptor = descriptor,
                 changeDescriptor = changeDescriptor,
-                persistenceBackendPath = "$internalAppFilesPath/wallet-${walletId.take(8)}.sqlite",
+                // persistenceBackendPath = "$internalAppFilesPath/wallet-${walletId.take(8)}.sqlite",
                 network = newWalletConfig.network,
             )
 
             return Wallet(
                 wallet = bdkWallet,
-                recoveryPhrase = mnemonic.asString(),
+                recoveryPhrase = mnemonic.toString(),
                 blockchainClientsConfig = BlockchainClientsConfig.createDefaultConfig(newWalletConfig.network)
             )
         }
@@ -241,7 +241,7 @@ class Wallet private constructor(
             val bdkWallet = BdkWallet(
                 descriptor = descriptor,
                 changeDescriptor = changeDescriptor,
-                persistenceBackendPath = "$internalAppFilesPath/wallet-${activeWallet.id.take(8)}.sqlite",
+                // persistenceBackendPath = "$internalAppFilesPath/wallet-${activeWallet.id.take(8)}.sqlite",
                 network = activeWallet.network.intoDomain(),
             )
 
@@ -279,9 +279,9 @@ class Wallet private constructor(
                 .setName(recoverWalletConfig.name)
                 .setNetwork(recoverWalletConfig.network.intoProto())
                 .setScriptType(ActiveWalletScriptType.P2WPKH)
-                .setDescriptor(descriptor.asStringPrivate())
-                .setChangeDescriptor(changeDescriptor.asStringPrivate())
-                .setRecoveryPhrase(mnemonic.asString())
+                .setDescriptor(descriptor.toStringWithSecret())
+                .setChangeDescriptor(changeDescriptor.toStringWithSecret())
+                .setRecoveryPhrase(mnemonic.toString())
                 .build()
 
             // TODO: launch this correctly, not on the main thread
@@ -291,13 +291,13 @@ class Wallet private constructor(
             val bdkWallet = BdkWallet(
                 descriptor = descriptor,
                 changeDescriptor = changeDescriptor,
-                persistenceBackendPath = "$internalAppFilesPath/wallet-${walletId.take(8)}.db",
+                // persistenceBackendPath = "$internalAppFilesPath/wallet-${walletId.take(8)}.db",
                 network = recoverWalletConfig.network,
             )
 
             return Wallet(
                 wallet = bdkWallet,
-                recoveryPhrase = mnemonic.asString(),
+                recoveryPhrase = mnemonic.toString(),
                 blockchainClientsConfig = BlockchainClientsConfig.createDefaultConfig(recoverWalletConfig.network)
             )
         }
