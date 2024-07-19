@@ -55,6 +55,7 @@ class DevkitWalletActivity : AppCompatActivity() {
                         userPreferencesRepository = userPreferencesRepository,
                     )
                 }
+                activeWallet.setStoragePath(filesDir.absolutePath)
                 setContent {
                     DevkitTheme {
                         HomeNavigation(activeWallet)

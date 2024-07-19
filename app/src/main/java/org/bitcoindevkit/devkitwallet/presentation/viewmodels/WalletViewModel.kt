@@ -13,11 +13,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import org.bitcoindevkit.devkitwallet.domain.Wallet
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import org.bitcoindevkit.NodeMessageHandler
+import org.bitcoindevkit.NodeState
+import org.bitcoindevkit.Peer
 import org.bitcoindevkit.devkitwallet.domain.CurrencyUnit
 import org.bitcoindevkit.devkitwallet.presentation.viewmodels.mvi.WalletScreenAction
 import org.bitcoindevkit.devkitwallet.presentation.viewmodels.mvi.WalletScreenState
+import org.bitcoindevkit.runNode
 
 private const val TAG = "WalletViewModel"
 
@@ -30,8 +36,9 @@ internal class WalletViewModel(
 
     fun onAction(action: WalletScreenAction) {
         when (action) {
-            WalletScreenAction.UpdateBalance -> updateBalance()
-            WalletScreenAction.SwitchUnit    -> switchUnit()
+            WalletScreenAction.UpdateBalance  -> updateBalance()
+            WalletScreenAction.SwitchUnit     -> switchUnit()
+            WalletScreenAction.StartKyotoNode -> startKyotoNode()
         }
     }
 
@@ -44,13 +51,28 @@ internal class WalletViewModel(
 
     private fun updateBalance() {
         state = state.copy(syncing = true)
+
         viewModelScope.launch(Dispatchers.IO) {
-            wallet.sync()
-            withContext(Dispatchers.Main) {
-                val newBalance = wallet.getBalance()
-                Log.i(TAG, "New balance: $newBalance")
-                state = state.copy(balance = newBalance, syncing = false)
+            val syncHadUpdate: Boolean = wallet.kyotoSync()
+            Log.i(TAG, "Synced with update value: $syncHadUpdate")
+            if (syncHadUpdate) {
+                Log.i(TAG, "Sync had update")
+                val balance = wallet.getBalance()
+                Log.i(TAG, "New balance: $balance")
+                withContext(Dispatchers.Main) {
+                    state = state.copy(balance = balance, syncing = false)
+                }
+            } else {
+                withContext(Dispatchers.Main) {
+                    state = state.copy(syncing = false)
+                }
             }
+        }
+    }
+
+    private fun startKyotoNode() {
+        viewModelScope.launch(Dispatchers.IO) {
+            wallet.startKyotoNode()
         }
     }
 }

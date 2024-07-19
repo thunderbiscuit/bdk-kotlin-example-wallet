@@ -16,13 +16,19 @@ import org.bitcoindevkit.Descriptor
 import org.bitcoindevkit.DescriptorSecretKey
 import org.bitcoindevkit.FeeRate
 import org.bitcoindevkit.KeychainKind
+import org.bitcoindevkit.LightClient
+import org.bitcoindevkit.LightNode
 import org.bitcoindevkit.Mnemonic
 import org.bitcoindevkit.Network
+import org.bitcoindevkit.NodeMessageHandler
+import org.bitcoindevkit.NodeState
+import org.bitcoindevkit.Peer
 import org.bitcoindevkit.Psbt
 import org.bitcoindevkit.Script
 import org.bitcoindevkit.TxBuilder
 import org.bitcoindevkit.Update
 import org.bitcoindevkit.WordCount
+import org.bitcoindevkit.buildLightClient
 import org.bitcoindevkit.devkitwallet.data.ActiveWalletScriptType
 import org.bitcoindevkit.devkitwallet.data.ConfirmationBlock
 import org.bitcoindevkit.devkitwallet.data.NewWalletConfig
@@ -33,6 +39,7 @@ import org.bitcoindevkit.devkitwallet.data.TxDetails
 import org.bitcoindevkit.devkitwallet.domain.utils.intoDomain
 import org.bitcoindevkit.devkitwallet.domain.utils.intoProto
 import org.bitcoindevkit.devkitwallet.presentation.viewmodels.mvi.Recipient
+import org.bitcoindevkit.runNode
 import org.bitcoindevkit.Wallet as BdkWallet
 import java.util.UUID
 
@@ -44,9 +51,25 @@ class Wallet private constructor(
     blockchainClientsConfig: BlockchainClientsConfig
 ) {
     private var currentBlockchainClient: BlockchainClient? = blockchainClientsConfig.getClient()
+    private var storagePath: String = ""
+    private lateinit var kyotoNode: LightNode
+    private lateinit var kyotoClient: LightClient
+    var kyotoNodeIsLive: Boolean = false
+        private set
+    var latestKyotoBlock: ULong = 0uL
+        private set
 
     fun getRecoveryPhrase(): List<String> {
         return recoveryPhrase.split(" ")
+    }
+
+    fun setStoragePath(path: String) {
+        storagePath = path
+        Log.i(TAG, "Wallet storage path set to $storagePath")
+    }
+
+    fun getStoragePath(): String {
+        return storagePath
     }
 
     fun createTransaction(
@@ -160,6 +183,47 @@ class Wallet private constructor(
         val update: Update = currentBlockchainClient?.fullScan(fullScanRequest, 20u) ?: throw IllegalStateException("Blockchain client not initialized")
         Log.i(TAG, "Wallet sync complete with update $update")
         wallet.applyUpdate(update)
+    }
+
+    fun startKyotoNode() {
+        Log.i(TAG, "Starting Kyoto node")
+        val peers: List<Peer> = listOf(
+            Peer.V4(23u, 137u, 57u, 100u)
+        )
+        val logger = KotlinKyotoLogger(onDialog = ::newKyotoBlock )
+
+        val (node, client) = buildLightClient(
+            wallet = wallet,
+            peers = peers,
+            connections = 1u,
+            recoveryHeight = 190_000u,
+            dataDir = storagePath,
+            logger = logger
+        )
+        kyotoNode = node
+        kyotoClient = client
+        runNode(kyotoNode)
+        kyotoNodeIsLive = true
+    }
+
+    fun stopKyotoNode() {
+        // if (kyotoNodeIsLive) {
+        //     kyotoNode.stop()
+        //     kyotoNodeIsLive = false
+        // }
+    }
+
+    suspend fun kyotoSync(): Boolean {
+        val update = kyotoClient.update()
+        update?.let {
+            wallet.applyUpdate(it)
+            return true
+        }
+        return false
+    }
+
+    fun newKyotoBlock(height: ULong) {
+        latestKyotoBlock = height
     }
 
     fun getBalance(): ULong = wallet.balance().total.toSat()
@@ -322,5 +386,25 @@ fun createScriptAppropriateDescriptor(
             ActiveWalletScriptType.P2TR -> Descriptor.newBip86(bip32ExtendedRootKey, KeychainKind.INTERNAL, network)
             ActiveWalletScriptType.UNRECOGNIZED -> TODO()
         }
+    }
+}
+
+class KotlinKyotoLogger(val onDialog: (height: ULong) -> Unit): NodeMessageHandler {
+    override fun handleDialog(dialog: String) {
+        if (dialog.contains("Synced to tip")) {
+            val newDialog = dialog.split(" ").dropLast(1)
+            val height = newDialog.last().toULong()
+            Log.i(TAG, "Calling newKyotoBlock with new block height: $height")
+            onDialog(height)
+        }
+        Log.i(TAG, "Dialog: $dialog")
+    }
+
+    override fun handleStateChange(state: NodeState) {
+        Log.i(TAG, state.toString())
+    }
+
+    override fun handleWarning(warning: String) {
+        Log.w(TAG, warning)
     }
 }

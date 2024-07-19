@@ -15,6 +15,7 @@ import androidx.navigation.compose.composable
 import org.bitcoindevkit.devkitwallet.domain.Wallet
 import org.bitcoindevkit.devkitwallet.presentation.ui.screens.WalletRoot
 import org.bitcoindevkit.devkitwallet.presentation.ui.screens.drawer.AboutScreen
+import org.bitcoindevkit.devkitwallet.presentation.ui.screens.drawer.CompactBlockFilterClientScreen
 import org.bitcoindevkit.devkitwallet.presentation.ui.screens.drawer.CustomBlockchainClient
 import org.bitcoindevkit.devkitwallet.presentation.ui.screens.drawer.RecoveryPhraseScreen
 
@@ -69,7 +70,22 @@ fun HomeNavigation(
             }
         ) { RecoveryPhraseScreen(activeWallet.getRecoveryPhrase(), navController = navController) }
 
-        composable<CustomBlockchainClientScreen>(
+        // composable<CustomBlockchainClientScreen>(
+        //     enterTransition = {
+        //         slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, animationSpec = tween(animationDuration))
+        //     },
+        //     popEnterTransition = {
+        //         slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, animationSpec = tween(animationDuration))
+        //     },
+        //     exitTransition = {
+        //         slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Start, animationSpec = tween(animationDuration))
+        //     },
+        //     popExitTransition = {
+        //         slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Start, animationSpec = tween(animationDuration))
+        //     }
+        // ) { CustomBlockchainClient(navController = navController) }
+
+        composable<CompactBlockFilterClientScreen>(
             enterTransition = {
                 slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, animationSpec = tween(animationDuration))
             },
@@ -82,6 +98,6 @@ fun HomeNavigation(
             popExitTransition = {
                 slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Start, animationSpec = tween(animationDuration))
             }
-        ) { CustomBlockchainClient(navController = navController) }
+        ) { CompactBlockFilterClientScreen(activeWallet, navController) }
     }
 }

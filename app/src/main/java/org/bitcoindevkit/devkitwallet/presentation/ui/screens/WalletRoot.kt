@@ -40,7 +40,7 @@ import org.bitcoindevkit.devkitwallet.presentation.navigation.WalletNavigation
 import org.bitcoindevkit.devkitwallet.R
 import org.bitcoindevkit.devkitwallet.domain.Wallet
 import org.bitcoindevkit.devkitwallet.presentation.navigation.AboutScreen
-import org.bitcoindevkit.devkitwallet.presentation.navigation.CustomBlockchainClientScreen
+import org.bitcoindevkit.devkitwallet.presentation.navigation.CompactBlockFilterClientScreen
 import org.bitcoindevkit.devkitwallet.presentation.navigation.RecoveryPhraseScreen
 import org.bitcoindevkit.devkitwallet.presentation.theme.quattroRegular
 
@@ -111,12 +111,19 @@ internal fun WalletRoot(
                         colors = navigationItemColors
                     )
                     NavigationDrawerItem(
-                        label = { DrawerItemLabel("Custom Blockchain Client") },
+                        label = { DrawerItemLabel("Compact Block Filter Client") },
                         selected = items[2] == selectedItem.value,
-                        onClick = { navController.navigate(CustomBlockchainClientScreen) },
+                        onClick = { navController.navigate(CompactBlockFilterClientScreen) },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                         colors = navigationItemColors
                     )
+                    // NavigationDrawerItem(
+                    //     label = { DrawerItemLabel("Custom Blockchain Client") },
+                    //     selected = items[2] == selectedItem.value,
+                    //     onClick = { navController.navigate(CustomBlockchainClientScreen) },
+                    //     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                    //     colors = navigationItemColors
+                    // )
                 }
             }
         },

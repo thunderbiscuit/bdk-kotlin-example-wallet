@@ -168,7 +168,6 @@ internal fun WalletHomeScreen(
                 enabled = networkAvailable,
                 onClick = { onAction(WalletScreenAction.UpdateBalance) }
             )
-
             NeutralButton(
                 text = "transaction history",
                 enabled = networkAvailable,
